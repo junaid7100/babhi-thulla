@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: babhi-thulla-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: FRONTEND_ORIGIN
+        value: https://babhi-thulla-frontend.onrender.com
+
+  - type: web
+    name: babhi-thulla-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_SOCKET_URL
+        value: https://babhi-thulla-backend.onrender.com
