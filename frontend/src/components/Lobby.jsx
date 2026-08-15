@@ -60,7 +60,11 @@ export default function Lobby({ lobby, playerId, roomCode, onStart, onLeave }) {
               <span style={{ fontWeight: p.id === playerId ? 700 : 400 }}>
                 {p.displayName} {p.id === playerId ? "(you)" : ""} {p.id === lobby.hostPlayerId ? "★" : ""}
               </span>
-              {!p.connected && <span style={{ fontSize: 10, color: "#B5342E" }}>offline</span>}
+              {p.isBot ? (
+                <span style={{ fontSize: 10, color: "#a8a296" }}>BOT</span>
+              ) : (
+                !p.connected && <span style={{ fontSize: 10, color: "#B5342E" }}>offline</span>
+              )}
             </div>
           ))}
         </div>

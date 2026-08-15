@@ -2,7 +2,7 @@ import React from "react";
 import { AVATAR_COLORS } from "../constants.js";
 
 export default function OpponentSeat({ player, colorIndex }) {
-  const { displayName, cardCount, isCurrentTurn, escaped, escapedAt, connected } = player;
+  const { displayName, cardCount, isCurrentTurn, escaped, escapedAt, connected, isBot } = player;
   const color = AVATAR_COLORS[colorIndex % AVATAR_COLORS.length];
   return (
     <div style={{ textAlign: "center", opacity: escaped ? 0.45 : 1, minWidth: 56 }}>
@@ -41,7 +41,10 @@ export default function OpponentSeat({ player, colorIndex }) {
           />
         )}
       </div>
-      <div style={{ fontSize: 11, marginTop: 4, fontWeight: isCurrentTurn ? 700 : 400 }}>{displayName}</div>
+      <div style={{ fontSize: 11, marginTop: 4, fontWeight: isCurrentTurn ? 700 : 400 }}>
+        {displayName}
+        {isBot && <span style={{ marginLeft: 4, fontSize: 9, color: "#a8a296" }}>🤖</span>}
+      </div>
       <div style={{ fontSize: 10, color: "#a8a296" }}>
         {escaped ? `Escaped #${escapedAt}` : `${cardCount} cards`}
       </div>

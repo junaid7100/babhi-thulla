@@ -9,6 +9,8 @@ A casual multiplayer card game for one host + up to 4 friends (5 players total),
 
 Standard 52-card deck, no jokers, no trump. The player holding A♠ leads first. Each trick, follow the lead suit if you can. If you can't and play off-suit, that's a **Thulla** — the trick ends immediately and whoever played the highest lead-suit card picks up every card played so far. If everyone follows suit, the highest lead-suit card just wins the lead and the cards are discarded. The first trick is always discarded even if it's a Thulla. Run out of cards and you escape; last player left holding cards is the **Bhabhi**.
 
+Every room is created with 3 bots already seated (fewer if `maxPlayers` doesn't leave room for all 3), so the host can start playing solo right away. Bots play a random legal card ~1 second after their turn starts. Real players can still join a bot-filled room up to `maxPlayers`. If the last human leaves a room, it's torn down rather than left running bot-vs-bot forever.
+
 ## Project layout
 
 ```
@@ -85,6 +87,10 @@ npm test
 ```
 
 Runs the full game-engine unit test suite (`node --test`) covering deck integrity, dealing, follow-suit validation, Thulla detection/resolution, the first-trick discard exception, escapes, Bhabhi determination, and illegal-move rejection.
+
+## Client error logging
+
+The frontend reports uncaught exceptions, unhandled promise rejections, and `console.error()` calls to the backend (`POST /api/log-client-error`), which appends them as JSON lines to `backend/logs/client-errors.log`. This gives a persistent record of what broke in a player's browser without needing them to copy-paste their console. The log directory is gitignored and lives on the backend's local disk, so on Render (no persistent disk on the free plan) it resets whenever the service restarts or redeploys — pull it via the Render shell if you need it before then.
 
 ## Out of scope (v1)
 

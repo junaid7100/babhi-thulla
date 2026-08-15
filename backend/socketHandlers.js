@@ -1,4 +1,7 @@
 const rooms = require("./rooms");
+const { pickBotCard } = require("./bot");
+
+const BOT_MOVE_DELAY_MS = 1000;
 
 // Builds the player-specific view sent to a single socket. Never includes other players' hands.
 function buildStateView(room, forPlayerId) {
@@ -17,6 +20,7 @@ function buildStateView(room, forPlayerId) {
       connected: p.connected,
       escaped: p.escaped,
       escapedAt: p.escapedAt,
+      isBot: p.isBot,
       isCurrentTurn: room.status === "PLAYING" && room.currentPlayerId === p.id,
     })),
     currentTrick: room.currentTrick.map((t) => {
@@ -47,6 +51,7 @@ function buildLobbyView(room) {
       displayName: p.displayName,
       seat: p.seat,
       connected: p.connected,
+      isBot: p.isBot,
     })),
   };
 }
@@ -61,6 +66,60 @@ function emitStateToAll(io, room) {
 
 function emitLobbyToAll(io, room) {
   io.to(room.roomCode).emit("ROOM_UPDATED", buildLobbyView(room));
+}
+
+// If it's now a bot's turn, plays a card for it after a short "thinking" delay, then
+// applies the outcome the same way a real player's move would be applied — recursing
+// into itself via applyPlayResult so a run of consecutive bot turns plays itself out.
+function scheduleBotTurn(io, roomCode) {
+  const room = rooms.getRoom(roomCode);
+  if (!room || room.status !== "PLAYING") return;
+  const bot = room.players.find((p) => p.id === room.currentPlayerId);
+  if (!bot || !bot.isBot) return;
+
+  setTimeout(() => {
+    const freshRoom = rooms.getRoom(roomCode);
+    if (!freshRoom || freshRoom.status !== "PLAYING") return;
+    const freshBot = freshRoom.players.find((p) => p.id === freshRoom.currentPlayerId);
+    if (!freshBot || !freshBot.isBot) return;
+
+    const cardId = pickBotCard(freshBot.hand, freshRoom.leadSuit, freshRoom.currentTrick, freshRoom.firstTrick);
+    const result = rooms.playCard(roomCode, freshBot.id, cardId);
+    if (result.error) return;
+    applyPlayResult(io, freshRoom, result);
+  }, BOT_MOVE_DELAY_MS);
+}
+
+// Shared by the real PLAY_CARD handler and scheduleBotTurn so bot moves and human moves
+// broadcast events (THULLA, PLAYER_ESCAPED, STATE_UPDATE, GAME_FINISHED) identically.
+function applyPlayResult(io, room, result) {
+  if (result.trickResolved) {
+    if (result.isThulla && result.thullaInfo) {
+      io.to(room.roomCode).emit("THULLA", result.thullaInfo);
+    }
+    for (const esc of result.newlyEscaped) {
+      io.to(room.roomCode).emit("PLAYER_ESCAPED", esc);
+    }
+  }
+
+  emitStateToAll(io, room);
+
+  if (result.gameFinished) {
+    const bhabhi = room.players.find((p) => p.id === room.bhabhiPlayerId);
+    io.to(room.roomCode).emit("GAME_FINISHED", {
+      bhabhiPlayerId: room.bhabhiPlayerId,
+      bhabhiName: bhabhi ? bhabhi.displayName : null,
+      escapeOrder: (room.escapeOrder || []).map((id) => {
+        const p = room.players.find((pl) => pl.id === id);
+        return { playerId: id, displayName: p ? p.displayName : "?" };
+      }),
+      trickCount: room.trickCount,
+      thullaCount: room.thullaCount,
+    });
+    return;
+  }
+
+  scheduleBotTurn(io, room.roomCode);
 }
 
 function registerSocketHandlers(io, socket) {
@@ -110,6 +169,7 @@ function registerSocketHandlers(io, socket) {
     }
     io.to(room.roomCode).emit("GAME_STARTED", {});
     emitStateToAll(io, result.room);
+    scheduleBotTurn(io, result.room.roomCode);
   });
 
   socket.on("PLAY_CARD", ({ roomCode, cardId }) => {
@@ -129,30 +189,7 @@ function registerSocketHandlers(io, socket) {
       return;
     }
 
-    if (result.trickResolved) {
-      if (result.isThulla && result.thullaInfo) {
-        io.to(room.roomCode).emit("THULLA", result.thullaInfo);
-      }
-      for (const esc of result.newlyEscaped) {
-        io.to(room.roomCode).emit("PLAYER_ESCAPED", esc);
-      }
-    }
-
-    emitStateToAll(io, room);
-
-    if (result.gameFinished) {
-      const bhabhi = room.players.find((p) => p.id === room.bhabhiPlayerId);
-      io.to(room.roomCode).emit("GAME_FINISHED", {
-        bhabhiPlayerId: room.bhabhiPlayerId,
-        bhabhiName: bhabhi ? bhabhi.displayName : null,
-        escapeOrder: (room.escapeOrder || []).map((id) => {
-          const p = room.players.find((pl) => pl.id === id);
-          return { playerId: id, displayName: p ? p.displayName : "?" };
-        }),
-        trickCount: room.trickCount,
-        thullaCount: room.thullaCount,
-      });
-    }
+    applyPlayResult(io, room, result);
   });
 
   socket.on("PLAY_AGAIN", ({ roomCode }) => {
@@ -169,6 +206,7 @@ function registerSocketHandlers(io, socket) {
     }
     io.to(room.roomCode).emit("GAME_STARTED", {});
     emitStateToAll(io, result.room);
+    scheduleBotTurn(io, result.room.roomCode);
   });
 
   socket.on("LEAVE_ROOM", ({ roomCode }) => {

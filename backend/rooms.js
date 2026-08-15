@@ -3,6 +3,22 @@ const { initGame, validateAndApplyMove, resolveTrick, sortHand } = require("./ga
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no O,0,I,1
 const DEFAULT_MAX_PLAYERS = 5;
+const BOT_COUNT = 3;
+const BOT_NAMES = ["Bot Raju", "Bot Simran", "Bot Amit"];
+
+function makePlayer({ id, displayName, seat, isBot }) {
+  return {
+    id,
+    displayName,
+    seat,
+    connected: true,
+    socketId: null,
+    hand: [],
+    escaped: false,
+    escapedAt: null,
+    isBot: !!isBot,
+  };
+}
 
 /** @type {Map<string, GameRoom>} */
 const rooms = new Map();
@@ -21,23 +37,20 @@ function generateRoomCode() {
 function createRoom({ hostDisplayName, maxPlayers }) {
   const roomCode = generateRoomCode();
   const hostId = crypto.randomUUID();
+  const resolvedMaxPlayers = maxPlayers && maxPlayers >= 3 && maxPlayers <= 8 ? maxPlayers : DEFAULT_MAX_PLAYERS;
+  const players = [makePlayer({ id: hostId, displayName: hostDisplayName, seat: 0, isBot: false })];
+
+  const botSlots = Math.max(0, Math.min(BOT_COUNT, resolvedMaxPlayers - players.length));
+  for (let i = 0; i < botSlots; i++) {
+    players.push(makePlayer({ id: crypto.randomUUID(), displayName: BOT_NAMES[i], seat: players.length, isBot: true }));
+  }
+
   const room = {
     roomCode,
     status: "LOBBY",
     hostPlayerId: hostId,
-    maxPlayers: maxPlayers && maxPlayers >= 3 && maxPlayers <= 8 ? maxPlayers : DEFAULT_MAX_PLAYERS,
-    players: [
-      {
-        id: hostId,
-        displayName: hostDisplayName,
-        seat: 0,
-        connected: true,
-        socketId: null,
-        hand: [],
-        escaped: false,
-        escapedAt: null,
-      },
-    ],
+    maxPlayers: resolvedMaxPlayers,
+    players,
     currentTrick: [],
     leadSuit: null,
     currentPlayerId: null,
@@ -63,16 +76,7 @@ function joinRoom(roomCode, displayName) {
 
   const playerId = crypto.randomUUID();
   const seat = room.players.length;
-  room.players.push({
-    id: playerId,
-    displayName,
-    seat,
-    connected: true,
-    socketId: null,
-    hand: [],
-    escaped: false,
-    escapedAt: null,
-  });
+  room.players.push(makePlayer({ id: playerId, displayName, seat, isBot: false }));
   return { room, playerId };
 }
 
@@ -80,12 +84,15 @@ function leaveRoom(roomCode, playerId) {
   const room = getRoom(roomCode);
   if (!room) return;
   room.players = room.players.filter((p) => p.id !== playerId);
-  if (room.players.length === 0) {
+
+  // A room with no human players left (just bots, or nobody) has no one to drive it — drop it.
+  if (room.players.length === 0 || !room.players.some((p) => !p.isBot)) {
     rooms.delete(room.roomCode);
     return;
   }
   if (room.hostPlayerId === playerId) {
-    room.hostPlayerId = room.players[0].id;
+    const nextHost = room.players.find((p) => !p.isBot) || room.players[0];
+    room.hostPlayerId = nextHost.id;
   }
   return room;
 }
