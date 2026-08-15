@@ -34,15 +34,17 @@ function generateRoomCode() {
   return code;
 }
 
-function createRoom({ hostDisplayName, maxPlayers }) {
+function createRoom({ hostDisplayName, maxPlayers, withBots }) {
   const roomCode = generateRoomCode();
   const hostId = crypto.randomUUID();
   const resolvedMaxPlayers = maxPlayers && maxPlayers >= 3 && maxPlayers <= 8 ? maxPlayers : DEFAULT_MAX_PLAYERS;
   const players = [makePlayer({ id: hostId, displayName: hostDisplayName, seat: 0, isBot: false })];
 
-  const botSlots = Math.max(0, Math.min(BOT_COUNT, resolvedMaxPlayers - players.length));
-  for (let i = 0; i < botSlots; i++) {
-    players.push(makePlayer({ id: crypto.randomUUID(), displayName: BOT_NAMES[i], seat: players.length, isBot: true }));
+  if (withBots) {
+    const botSlots = Math.max(0, Math.min(BOT_COUNT, resolvedMaxPlayers - players.length));
+    for (let i = 0; i < botSlots; i++) {
+      players.push(makePlayer({ id: crypto.randomUUID(), displayName: BOT_NAMES[i], seat: players.length, isBot: true }));
+    }
   }
 
   const room = {
@@ -66,6 +68,12 @@ function createRoom({ hostDisplayName, maxPlayers }) {
 
 function getRoom(roomCode) {
   return rooms.get((roomCode || "").toUpperCase());
+}
+
+function deleteRoom(roomCode) {
+  const room = getRoom(roomCode);
+  if (!room) return;
+  rooms.delete(room.roomCode);
 }
 
 function joinRoom(roomCode, displayName) {
@@ -284,6 +292,7 @@ module.exports = {
   rooms,
   createRoom,
   getRoom,
+  deleteRoom,
   joinRoom,
   leaveRoom,
   startGame,

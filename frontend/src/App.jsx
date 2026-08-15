@@ -16,6 +16,7 @@ export default function App() {
     thullaBanner,
     gameFinished,
     errorMessage,
+    autoPlayNotice,
     createRoom,
     joinRoom,
     startGame,
@@ -55,7 +56,15 @@ export default function App() {
       </div>
     );
   } else if (gameState?.status === "PLAYING") {
-    screen = <GameTable gameState={gameState} playerId={playerId} thullaBanner={thullaBanner} onPlayCard={playCard} />;
+    screen = (
+      <GameTable
+        gameState={gameState}
+        playerId={playerId}
+        thullaBanner={thullaBanner}
+        autoPlayNotice={autoPlayNotice}
+        onPlayCard={playCard}
+      />
+    );
   } else {
     screen = <Lobby lobby={lobby} playerId={playerId} roomCode={roomCode} onStart={startGame} onLeave={leaveRoom} />;
   }
@@ -101,12 +110,13 @@ function Home({ connected, onCreate, onJoin }) {
   const [name, setName] = useState("");
   const [mode, setMode] = useState("create"); // "create" | "join"
   const [joinCode, setJoinCode] = useState("");
+  const [withBots, setWithBots] = useState(true);
 
   function handleSubmit(e) {
     e.preventDefault();
     if (!name.trim()) return;
     if (mode === "create") {
-      onCreate(name.trim(), 5);
+      onCreate(name.trim(), 5, withBots);
     } else {
       if (!joinCode.trim()) return;
       onJoin(joinCode.trim().toUpperCase(), name.trim());
@@ -149,6 +159,25 @@ function Home({ connected, onCreate, onJoin }) {
             maxLength={4}
             style={{ ...inputStyle, letterSpacing: 4, textAlign: "center", fontFamily: "Georgia, serif" }}
           />
+        )}
+
+        {mode === "create" && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setWithBots(true)}
+              style={withBots ? tabActive : tabInactive}
+            >
+              Play with Bots
+            </button>
+            <button
+              type="button"
+              onClick={() => setWithBots(false)}
+              style={!withBots ? tabActive : tabInactive}
+            >
+              Play with Friends
+            </button>
+          </div>
         )}
 
         <button type="submit" disabled={!connected} style={{ ...primaryButton, opacity: connected ? 1 : 0.5 }}>

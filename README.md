@@ -9,7 +9,9 @@ A casual multiplayer card game for one host + up to 4 friends (5 players total),
 
 Standard 52-card deck, no jokers, no trump. The player holding A♠ leads first. Each trick, follow the lead suit if you can. If you can't and play off-suit, that's a **Thulla** — the trick ends immediately and whoever played the highest lead-suit card picks up every card played so far. If everyone follows suit, the highest lead-suit card just wins the lead and the cards are discarded. The first trick is always discarded even if it's a Thulla. Run out of cards and you escape; last player left holding cards is the **Bhabhi**.
 
-Every room is created with 3 bots already seated (fewer if `maxPlayers` doesn't leave room for all 3), so the host can start playing solo right away. Bots play a random legal card ~1 second after their turn starts. Real players can still join a bot-filled room up to `maxPlayers`. If the last human leaves a room, it's torn down rather than left running bot-vs-bot forever.
+When creating a room, the host picks **Play with Bots** (seats 3 bots alongside the host, fewer if `maxPlayers` doesn't leave room for all 3, so play can start solo right away) or **Play with Friends** (no bots — waits for real players to join). Bots play a random legal card ~3 seconds after their turn starts. Real players can still join a bot-filled room up to `maxPlayers`. If the last human leaves a room, it's torn down rather than left running bot-vs-bot forever.
+
+Every room is force-closed 15 minutes after creation regardless of game state, and each human player gets 30 seconds to play their turn — if they don't, the server auto-plays a random legal (suit-following) card for them so the game never stalls waiting on an idle player.
 
 ## Project layout
 

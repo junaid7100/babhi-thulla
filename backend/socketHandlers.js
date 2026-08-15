@@ -1,7 +1,23 @@
 const rooms = require("./rooms");
 const { pickBotCard } = require("./bot");
 
-const BOT_MOVE_DELAY_MS = 1000;
+const BOT_MOVE_DELAY_MS = 3000;
+const TURN_TIME_LIMIT_MS = 30000;
+const ROOM_TTL_MS = 15 * 60 * 1000;
+
+// roomCode -> timeout handle for the current player's turn (bot "thinking" delay or a
+// human's time limit — whichever applies). Cleared and rescheduled on every turn change.
+const pendingTurnTimers = new Map();
+// roomCode -> timeout handle for the room's 15-minute lifetime cap.
+const roomExpiryTimers = new Map();
+
+function clearPendingTurn(roomCode) {
+  const timer = pendingTurnTimers.get(roomCode);
+  if (timer) {
+    clearTimeout(timer);
+    pendingTurnTimers.delete(roomCode);
+  }
+}
 
 // Builds the player-specific view sent to a single socket. Never includes other players' hands.
 function buildStateView(room, forPlayerId) {
@@ -29,6 +45,7 @@ function buildStateView(room, forPlayerId) {
     }),
     leadSuit: room.leadSuit,
     currentPlayerId: room.currentPlayerId,
+    turnDeadline: room.turnDeadline || null,
     firstTrick: room.firstTrick,
     trickCount: room.trickCount,
     thullaCount: room.thullaCount,
@@ -68,30 +85,49 @@ function emitLobbyToAll(io, room) {
   io.to(room.roomCode).emit("ROOM_UPDATED", buildLobbyView(room));
 }
 
-// If it's now a bot's turn, plays a card for it after a short "thinking" delay, then
-// applies the outcome the same way a real player's move would be applied — recursing
-// into itself via applyPlayResult so a run of consecutive bot turns plays itself out.
-function scheduleBotTurn(io, roomCode) {
+// Plays a legal (follow-suit) card on behalf of whoever's turn it currently is, then
+// applies the outcome exactly as a real player's move would be applied — recursing into
+// applyPlayResult so a run of consecutive auto-played turns plays itself out.
+function autoPlayCurrentTurn(io, roomCode, forPlayerId) {
   const room = rooms.getRoom(roomCode);
   if (!room || room.status !== "PLAYING") return;
-  const bot = room.players.find((p) => p.id === room.currentPlayerId);
-  if (!bot || !bot.isBot) return;
+  if (room.currentPlayerId !== forPlayerId) return; // turn already moved on
+  const player = room.players.find((p) => p.id === forPlayerId);
+  if (!player) return;
 
-  setTimeout(() => {
-    const freshRoom = rooms.getRoom(roomCode);
-    if (!freshRoom || freshRoom.status !== "PLAYING") return;
-    const freshBot = freshRoom.players.find((p) => p.id === freshRoom.currentPlayerId);
-    if (!freshBot || !freshBot.isBot) return;
-
-    const cardId = pickBotCard(freshBot.hand, freshRoom.leadSuit, freshRoom.currentTrick, freshRoom.firstTrick);
-    const result = rooms.playCard(roomCode, freshBot.id, cardId);
-    if (result.error) return;
-    applyPlayResult(io, freshRoom, result);
-  }, BOT_MOVE_DELAY_MS);
+  const cardId = pickBotCard(player.hand, room.leadSuit, room.currentTrick, room.firstTrick);
+  const result = rooms.playCard(roomCode, forPlayerId, cardId);
+  if (result.error) return;
+  if (!player.isBot) {
+    io.to(roomCode).emit("TURN_AUTO_PLAYED", { playerId: player.id, displayName: player.displayName });
+  }
+  applyPlayResult(io, room, result);
 }
 
-// Shared by the real PLAY_CARD handler and scheduleBotTurn so bot moves and human moves
-// broadcast events (THULLA, PLAYER_ESCAPED, STATE_UPDATE, GAME_FINISHED) identically.
+// Schedules whoever's turn it now is to auto-play: a short "thinking" delay for bots,
+// or the full time limit for a human before their turn is auto-played for them.
+function scheduleNextTurn(io, roomCode) {
+  clearPendingTurn(roomCode);
+  const room = rooms.getRoom(roomCode);
+  if (!room || room.status !== "PLAYING") return;
+  const player = room.players.find((p) => p.id === room.currentPlayerId);
+  if (!player) return;
+
+  const delay = player.isBot ? BOT_MOVE_DELAY_MS : TURN_TIME_LIMIT_MS;
+  const forPlayerId = player.id;
+  room.turnDeadline = Date.now() + delay;
+
+  const timer = setTimeout(() => {
+    pendingTurnTimers.delete(roomCode);
+    autoPlayCurrentTurn(io, roomCode, forPlayerId);
+  }, delay);
+  pendingTurnTimers.set(roomCode, timer);
+}
+
+// Shared by the real PLAY_CARD handler and autoPlayCurrentTurn so bot/auto-played moves
+// and human moves broadcast events (THULLA, PLAYER_ESCAPED, STATE_UPDATE, GAME_FINISHED)
+// identically. Schedules the next turn's timer *before* emitting state so the deadline
+// sent to clients is already in place.
 function applyPlayResult(io, room, result) {
   if (result.trickResolved) {
     if (result.isThulla && result.thullaInfo) {
@@ -100,6 +136,13 @@ function applyPlayResult(io, room, result) {
     for (const esc of result.newlyEscaped) {
       io.to(room.roomCode).emit("PLAYER_ESCAPED", esc);
     }
+  }
+
+  if (!result.gameFinished) {
+    scheduleNextTurn(io, room.roomCode);
+  } else {
+    clearPendingTurn(room.roomCode);
+    room.turnDeadline = null;
   }
 
   emitStateToAll(io, room);
@@ -116,24 +159,40 @@ function applyPlayResult(io, room, result) {
       trickCount: room.trickCount,
       thullaCount: room.thullaCount,
     });
-    return;
   }
+}
 
-  scheduleBotTurn(io, room.roomCode);
+// A room is force-closed 15 minutes after creation, win/lose/still-in-lobby regardless —
+// connected clients are told why and knocked back to the timers cleaned up.
+function scheduleRoomExpiry(io, roomCode) {
+  const timer = setTimeout(() => {
+    roomExpiryTimers.delete(roomCode);
+    const room = rooms.getRoom(roomCode);
+    if (!room) return;
+    io.to(roomCode).emit("ROOM_EXPIRED", { message: "This room has expired after 15 minutes." });
+    clearPendingTurn(roomCode);
+    rooms.deleteRoom(roomCode);
+  }, ROOM_TTL_MS);
+  roomExpiryTimers.set(roomCode, timer);
 }
 
 function registerSocketHandlers(io, socket) {
-  socket.on("CREATE_ROOM", ({ displayName, maxPlayers }) => {
+  socket.on("CREATE_ROOM", ({ displayName, maxPlayers, withBots }) => {
     if (!displayName || !displayName.trim()) {
       socket.emit("ERROR", { message: "Please enter a display name." });
       return;
     }
-    const { room, playerId } = rooms.createRoom({ hostDisplayName: displayName.trim().slice(0, 20), maxPlayers });
+    const { room, playerId } = rooms.createRoom({
+      hostDisplayName: displayName.trim().slice(0, 20),
+      maxPlayers,
+      withBots: !!withBots,
+    });
     const player = room.players.find((p) => p.id === playerId);
     player.socketId = socket.id;
     socket.join(room.roomCode);
     socket.emit("ROOM_CREATED", { roomCode: room.roomCode, playerId });
     emitLobbyToAll(io, room);
+    scheduleRoomExpiry(io, room.roomCode);
   });
 
   socket.on("JOIN_ROOM", ({ roomCode, displayName }) => {
@@ -168,8 +227,8 @@ function registerSocketHandlers(io, socket) {
       return;
     }
     io.to(room.roomCode).emit("GAME_STARTED", {});
+    scheduleNextTurn(io, result.room.roomCode);
     emitStateToAll(io, result.room);
-    scheduleBotTurn(io, result.room.roomCode);
   });
 
   socket.on("PLAY_CARD", ({ roomCode, cardId }) => {
@@ -205,8 +264,8 @@ function registerSocketHandlers(io, socket) {
       return;
     }
     io.to(room.roomCode).emit("GAME_STARTED", {});
+    scheduleNextTurn(io, result.room.roomCode);
     emitStateToAll(io, result.room);
-    scheduleBotTurn(io, result.room.roomCode);
   });
 
   socket.on("LEAVE_ROOM", ({ roomCode }) => {
@@ -219,6 +278,14 @@ function registerSocketHandlers(io, socket) {
     if (updated) {
       emitLobbyToAll(io, updated);
       if (updated.status === "PLAYING") emitStateToAll(io, updated);
+    } else {
+      // Room was torn down (empty, or no humans left) — drop its timers too.
+      clearPendingTurn(room.roomCode);
+      const expiry = roomExpiryTimers.get(room.roomCode);
+      if (expiry) {
+        clearTimeout(expiry);
+        roomExpiryTimers.delete(room.roomCode);
+      }
     }
   });
 

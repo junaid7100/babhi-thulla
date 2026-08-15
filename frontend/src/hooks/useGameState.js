@@ -37,6 +37,7 @@ export function useGameState() {
   const [thullaBanner, setThullaBanner] = useState(null);
   const [gameFinished, setGameFinished] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [autoPlayNotice, setAutoPlayNotice] = useState(null);
   const [reconnecting, setReconnecting] = useState(() => !!loadSession());
   const attemptedReconnect = useRef(false);
 
@@ -82,6 +83,18 @@ export function useGameState() {
     function onGameFinished(payload) {
       setGameFinished(payload);
     }
+    function onTurnAutoPlayed({ displayName }) {
+      setAutoPlayNotice(`${displayName} ran out of time — a card was auto-played.`);
+    }
+    function onRoomExpired({ message }) {
+      clearSession();
+      setRoomCode(null);
+      setPlayerId(null);
+      setLobby(null);
+      setGameState(null);
+      setGameFinished(null);
+      setErrorMessage(message || "This room has expired.");
+    }
     function onError({ message }) {
       setErrorMessage(message);
       if (message === "Room not found." || message === "Player not found in this room.") {
@@ -99,6 +112,8 @@ export function useGameState() {
     socket.on("STATE_UPDATE", onStateUpdate);
     socket.on("THULLA", onThulla);
     socket.on("GAME_FINISHED", onGameFinished);
+    socket.on("TURN_AUTO_PLAYED", onTurnAutoPlayed);
+    socket.on("ROOM_EXPIRED", onRoomExpired);
     socket.on("ERROR", onError);
 
     if (socket.connected) onConnect();
@@ -113,6 +128,8 @@ export function useGameState() {
       socket.off("STATE_UPDATE", onStateUpdate);
       socket.off("THULLA", onThulla);
       socket.off("GAME_FINISHED", onGameFinished);
+      socket.off("TURN_AUTO_PLAYED", onTurnAutoPlayed);
+      socket.off("ROOM_EXPIRED", onRoomExpired);
       socket.off("ERROR", onError);
     };
   }, []);
@@ -124,8 +141,15 @@ export function useGameState() {
     }
   }, [thullaBanner]);
 
-  const createRoom = useCallback((displayName, maxPlayers) => {
-    socket.emit("CREATE_ROOM", { displayName, maxPlayers });
+  useEffect(() => {
+    if (autoPlayNotice) {
+      const t = setTimeout(() => setAutoPlayNotice(null), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [autoPlayNotice]);
+
+  const createRoom = useCallback((displayName, maxPlayers, withBots) => {
+    socket.emit("CREATE_ROOM", { displayName, maxPlayers, withBots });
   }, []);
 
   const joinRoom = useCallback((code, displayName) => {
@@ -172,6 +196,7 @@ export function useGameState() {
     thullaBanner,
     gameFinished,
     errorMessage,
+    autoPlayNotice,
     createRoom,
     joinRoom,
     startGame,
