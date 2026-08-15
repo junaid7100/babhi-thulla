@@ -3,6 +3,7 @@ import { useGameState } from "./hooks/useGameState.js";
 import Lobby from "./components/Lobby.jsx";
 import GameTable from "./components/GameTable.jsx";
 import GameOverPanel from "./components/GameOverPanel.jsx";
+import { APP_VERSION } from "./version.js";
 
 export default function App() {
   const {
@@ -72,6 +73,20 @@ export default function App() {
     >
       {screen}
       {errorMessage && <ErrorToast message={errorMessage} onDismiss={clearError} />}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 4,
+          left: 6,
+          fontSize: 10,
+          color: "rgba(240,237,228,0.35)",
+          pointerEvents: "none",
+          zIndex: 100,
+          letterSpacing: 0.5,
+        }}
+      >
+        {APP_VERSION}
+      </div>
       <style>{`
         @keyframes popIn { from { transform: translate(-50%,-50%) scale(0.85); opacity: 0; } to { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
         * { box-sizing: border-box; }
