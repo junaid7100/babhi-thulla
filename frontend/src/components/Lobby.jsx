@@ -75,7 +75,7 @@ export default function Lobby({ lobby, playerId, roomCode, onStart, onLeave }) {
       )}
 
       {isHost ? (
-        <button onClick={onStart} disabled={!canStart} style={{ ...primaryButton, marginTop: 24, opacity: canStart ? 1 : 0.4 }}>
+        <button onClick={() => onStart()} disabled={!canStart} style={{ ...primaryButton, marginTop: 24, opacity: canStart ? 1 : 0.4 }}>
           START GAME
         </button>
       ) : (
