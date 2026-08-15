@@ -1,0 +1,17 @@
+export const RULES = {
+  minPlayers: 3,
+  maxPlayers: 8,
+  defaultMaxPlayers: 4,
+  deckSize: 52,
+  startingCard: "AS",
+  requireFollowSuit: true,
+  thullaEnabled: true,
+  thullaEndsTrick: true,
+  thullaWinnerGetsPile: true,
+  normalTrickWinnerGetsPile: false,
+  lastPlayerIsBhabhi: true,
+  turnTimeLimitMs: 60_000,
+  roomCodeLength: 4,
+  roomTtlMs: 3 * 60 * 60 * 1000,
+  displayNameMaxLength: 16,
+} as const;

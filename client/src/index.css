@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-felt-950 text-neutral-100 font-body overflow-x-hidden;
+    background-image: radial-gradient(ellipse at top, #16241f 0%, #0b1210 70%);
+  }
+  button {
+    @apply select-none;
+  }
+  :focus-visible {
+    outline: 2px solid #d97757;
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
