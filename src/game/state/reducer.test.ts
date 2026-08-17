@@ -138,6 +138,105 @@ describe('buildState: escape and round end', () => {
   })
 })
 
+describe('buildState: Neighbor Card Request', () => {
+  const requestRules = { ...rules, neighborCardRequest: { enabled: true } }
+  function requestGameStarted(overrides: Partial<Extract<GameEvent, { type: 'GAME_STARTED' }>> = {}): GameEvent {
+    return { ...(gameStarted(overrides) as Extract<GameEvent, { type: 'GAME_STARTED' }>), rules: requestRules }
+  }
+  function requested(requesterId: string, targetId: string, idSuffix: string): GameEvent {
+    return { id: `ev-${idSuffix}`, type: 'NEIGHBOR_REQUEST', timestamp: 3000, requesterId, targetId }
+  }
+
+  it('grants a right when a seat-neighbor Thullas a trick you win and pick up', () => {
+    const events = [
+      requestGameStarted(),
+      played('you', '7S', '1'),
+      played('ali', 'KS', '2'),
+      played('sara', '3S', '3'), // trick 0: clean, ali wins, ali leads next
+      played('ali', 'QH', '4'), // trick 1: ali leads hearts
+      played('sara', '2D', '5'), // sara (seat 2, adjacent to ali seat 1) thullas -> ali wins + picks up
+    ]
+    const state = buildState(events)
+    expect(state.invalidEvents).toEqual([])
+    const ali = state.players.find((p) => p.id === 'ali')!
+    expect(ali.owedRequestsFrom).toEqual(['sara'])
+  })
+
+  it('does not grant a right when the offender is not a seat-neighbor of the winner', () => {
+    const fourPlayers: PlayerSetup[] = [
+      { id: 'you', name: 'You', seat: 0, isUser: true },
+      { id: 'ali', name: 'Ali', seat: 1, isUser: false },
+      { id: 'sara', name: 'Sara', seat: 2, isUser: false },
+      { id: 'ahmed', name: 'Ahmed', seat: 3, isUser: false },
+    ]
+    const events = [
+      requestGameStarted({ players: fourPlayers, userHandCardIds: ['7S', '9D'] }),
+      played('you', '7S', '1'),
+      played('ali', '3S', '2'),
+      played('sara', '5S', '3'),
+      played('ahmed', '6S', '4'), // trick 0: clean, you win with 7S (highest spade), you lead trick 1
+      played('you', '9D', '5'), // trick 1: you lead diamonds
+      played('ali', '2D', '6'), // ali follows, lower
+      played('sara', '9C', '7'), // sara (seat 2 — NOT adjacent to you, seat 0, in a 4-seat table) thullas -> you win + pick up
+    ]
+    const state = buildState(events)
+    expect(state.invalidEvents).toEqual([])
+    const you = state.players.find((p) => p.id === 'you')!
+    expect(you.owedRequestsFrom).toEqual([])
+  })
+
+  it('cashes in a Neighbor Card Request: transfers the whole hand, target escapes, requester turn is spent', () => {
+    const events = [
+      requestGameStarted(),
+      played('you', '7S', '1'),
+      played('ali', 'KS', '2'),
+      played('sara', '3S', '3'), // trick 0 clean, ali wins, leads trick 1
+      played('ali', 'QH', '4'), // trick 1: ali leads hearts
+      played('sara', '2D', '5'), // sara thullas -> ali wins + picks up, earns right against sara
+    ]
+    let state = buildState(events)
+    expect(state.currentPlayerId).toBe('ali')
+    const saraCardsBefore = state.players.find((p) => p.id === 'sara')!.cardsRemaining
+
+    state = buildState([...events, requested('ali', 'sara', '6')])
+    expect(state.invalidEvents).toEqual([])
+    const ali = state.players.find((p) => p.id === 'ali')!
+    const sara = state.players.find((p) => p.id === 'sara')!
+    expect(sara.escaped).toBe(true)
+    expect(sara.cardsRemaining).toBe(0)
+    expect(sara.hand).toEqual([])
+    expect(ali.owedRequestsFrom).toEqual([])
+    expect(ali.cardsRemaining).toBe(17 + saraCardsBefore) // 17 = ali's tally after the earlier pickup
+    expect(state.finishOrder).toContain('sara')
+    expect(state.currentPlayerId).toBe('you') // ali's turn was spent; next active seat leads
+  })
+
+  it('rejects a request when leading has already started (mid-trick)', () => {
+    const events = [
+      requestGameStarted(),
+      played('you', '7S', '1'),
+      played('ali', 'KS', '2'),
+      played('sara', '3S', '3'),
+      played('ali', 'QH', '4'),
+      played('sara', '2D', '5'),
+      played('ali', 'AH', '6'), // ali actually leads trick 2 with a real card first
+    ]
+    const midTrickState = buildState([...events, requested('you', 'ali', '7')])
+    // 'you' isn't even the current player here (ali just led, so it's the next player's turn) — should be flagged invalid either way.
+    expect(midTrickState.invalidEvents.length).toBeGreaterThan(0)
+  })
+
+  it('rejects a request against a player with no earned right', () => {
+    const state = buildState([requestGameStarted(), requested('you', 'ali', '1')])
+    expect(state.invalidEvents).toHaveLength(1)
+  })
+
+  it('rejects a request when the house rule is disabled', () => {
+    const state = buildState([gameStarted(), requested('you', 'ali', '1')])
+    expect(state.invalidEvents).toHaveLength(1)
+  })
+})
+
 describe('buildState: defensive replay', () => {
   it('flags an out-of-turn play instead of corrupting state', () => {
     const events = [gameStarted(), played('ali', 'KS', '1')]

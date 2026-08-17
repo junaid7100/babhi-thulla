@@ -29,6 +29,14 @@ export type GameEvent =
       playerId: string
       cardId: string
     }
+  | {
+      id: string
+      type: 'NEIGHBOR_REQUEST'
+      timestamp: number
+      /** Must be the current leader, cashing in a right earned against `targetId`. */
+      requesterId: string
+      targetId: string
+    }
 
 export type GameStatus = 'IN_PROGRESS' | 'COMPLETED'
 
@@ -78,6 +86,12 @@ export interface PlayerState {
   escapedAtTrickIndex: number | null
   /** Suits this player has proven void in by sluffing off-suit. */
   voidSuits: Suit[]
+  /**
+   * Neighbor Card Request rights this player has earned but not yet used —
+   * one entry per qualifying incident, each redeemable for that specific
+   * neighbor's entire hand the next time this player leads. See RULES.md.
+   */
+  owedRequestsFrom: string[]
 }
 
 export interface InvalidEventRecord {

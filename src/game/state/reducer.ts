@@ -20,6 +20,12 @@ function nextInCircularOrder(order: string[], fromId: string, exclude: Set<strin
   return null
 }
 
+/** True if two seats (0-indexed, fixed at deal) sit directly next to each other around the table. */
+function areNeighboringSeats(seatA: number, seatB: number, numPlayers: number): boolean {
+  const diff = Math.abs(seatA - seatB)
+  return diff === 1 || diff === numPlayers - 1
+}
+
 const EMPTY_STATE_ERROR = 'GameState requested before a GAME_STARTED event was applied.'
 
 /**
@@ -47,7 +53,8 @@ export function buildState(events: GameEvent[]): GameState {
       continue
     }
 
-    const result = applyCardPlayed(state, event)
+    const result: { state: GameState } | { error: string } =
+      event.type === 'CARD_PLAYED' ? applyCardPlayed(state, event) : applyNeighborRequest(state, event)
     if ('error' in result) {
       invalidEvents.push({ eventId: event.id, reason: result.error })
       continue
@@ -77,6 +84,7 @@ function applyGameStarted(event: Extract<GameEvent, { type: 'GAME_STARTED' }>): 
       escaped: false,
       escapedAtTrickIndex: null,
       voidSuits: [],
+      owedRequestsFrom: [],
     }
   })
 
@@ -142,6 +150,7 @@ function applyCardPlayed(
     hand: [...p.hand],
     cardsPlayed: [...p.cardsPlayed],
     voidSuits: [...p.voidSuits],
+    owedRequestsFrom: [...p.owedRequestsFrom],
   }))
   const player = players.find((p) => p.id === event.playerId)
   if (!player) return { error: `Unknown player ${event.playerId}.` }
@@ -216,6 +225,16 @@ function applyCardPlayed(
     const pickedCards = resolved.plays.map((p) => p.card)
     winner.hand.push(...pickedCards)
     winner.cardsRemaining += pickedCards.length
+
+    if (prev.rules.neighborCardRequest.enabled) {
+      for (const play of resolved.plays) {
+        if (!play.isThulla || play.playerId === winner.id) continue
+        const offender = players.find((p) => p.id === play.playerId)!
+        if (areNeighboringSeats(offender.seat, winner.seat, players.length)) {
+          winner.owedRequestsFrom.push(offender.id)
+        }
+      }
+    }
   } else {
     playedCardIds = [...playedCardIds, ...resolved.plays.map((p) => p.card.id)]
   }
@@ -260,5 +279,69 @@ function applyCardPlayed(
       currentPlayerId: leaderId,
       finishOrder,
     },
+  }
+}
+
+/**
+ * Cashes in an earned Neighbor Card Request (see RULES.md): the target's
+ * entire hand moves to the requester, the target escapes immediately, and
+ * the requester's turn is spent — the next active player leads.
+ */
+function applyNeighborRequest(
+  prev: GameState,
+  event: Extract<GameEvent, { type: 'NEIGHBOR_REQUEST' }>,
+): { state: GameState } | { error: string } {
+  if (!prev.rules.neighborCardRequest.enabled) {
+    return { error: 'The Neighbor Card Request house rule is not enabled for this game.' }
+  }
+  if (!prev.currentTrick) return { error: 'No trick in progress.' }
+  if (prev.currentPlayerId !== event.requesterId) {
+    return { error: `Expected ${prev.currentPlayerId} to act, but ${event.requesterId} made the request.` }
+  }
+  if (prev.currentTrick.plays.length !== 0) {
+    return { error: 'A Neighbor Card Request can only be made when leading a fresh trick.' }
+  }
+
+  const players = prev.players.map((p) => ({ ...p, hand: [...p.hand], owedRequestsFrom: [...p.owedRequestsFrom] }))
+  const requester = players.find((p) => p.id === event.requesterId)
+  const target = players.find((p) => p.id === event.targetId)
+  if (!requester) return { error: `Unknown player ${event.requesterId}.` }
+  if (!target) return { error: `Unknown player ${event.targetId}.` }
+  if (target.escaped || target.cardsRemaining === 0) return { error: `${target.name} has no cards left to hand over.` }
+
+  const owedIdx = requester.owedRequestsFrom.indexOf(event.targetId)
+  if (owedIdx === -1) return { error: `You have not earned a Neighbor Card Request against ${target.name}.` }
+
+  requester.owedRequestsFrom.splice(owedIdx, 1)
+  requester.hand.push(...target.hand)
+  requester.cardsRemaining += target.cardsRemaining
+  target.hand = []
+  target.cardsRemaining = 0
+
+  const finishOrder = [...prev.finishOrder]
+  target.escaped = true
+  target.escapedAtTrickIndex = prev.currentTrick.index
+  finishOrder.push(target.id)
+
+  const stillActive = players.filter((p) => !p.escaped)
+  if (stillActive.length <= prev.rules.roundEndsWhenPlayersRemaining) {
+    for (const p of stillActive) if (!finishOrder.includes(p.id)) finishOrder.push(p.id)
+    return {
+      state: { ...prev, players, currentTrick: null, status: 'COMPLETED', currentPlayerId: null, finishOrder },
+    }
+  }
+
+  const order = seatOrderIds(players)
+  const escapedNow = new Set(players.filter((p) => p.escaped).map((p) => p.id))
+  const nextLeader = nextInCircularOrder(order, requester.id, escapedNow)
+  const nextTrick: CurrentTrick = {
+    index: prev.currentTrick.index,
+    leadSuit: null,
+    plays: [],
+    activePlayerIdsAtStart: order.filter((id) => !escapedNow.has(id)),
+  }
+
+  return {
+    state: { ...prev, players, currentTrick: nextTrick, currentPlayerId: nextLeader, finishOrder },
   }
 }

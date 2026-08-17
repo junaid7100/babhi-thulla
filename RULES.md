@@ -81,6 +81,42 @@ documented, so it's an explicit config field (`leaderAfterWinnerEscapes`,
 default `NEXT_IN_ORDER`): the next still-active player in seat order after
 the now-escaped winner leads instead.
 
+## House rule: Neighbor Card Request
+
+Confirmed directly by the table this app was built for, and implemented as
+an opt-in rule (`neighborCardRequest.enabled`) — on by default in the
+"Classic + Neighbor Request" template, off in the plain "Classic Baavi
+Tulla" template:
+
+> If your **immediate seat-neighbor** (the player directly to your left or
+> right — not just anyone) plays a **Thulla** in a trick that **you end up
+> winning** (so you're the one forced to pick it up), you earn a standing
+> **right to request that neighbor's entire hand**. You can cash it in on
+> any later turn where **you are leading a fresh trick**: instead of leading
+> a card, you demand it, every card in their hand moves to yours, they're
+> left holding zero cards and **escape immediately**, and your turn is
+> spent — the next still-active player leads the following trick.
+
+Implementation notes / explicit scope, so nothing here is a silent guess:
+
+- The right is earned **per qualifying incident** and **per specific
+  neighbor** — if it happens twice, you can cash in twice (each use
+  consumes one earned right against that neighbor). It never expires on its
+  own; it's only consumed by using it.
+- Only seat-*adjacent* Thullas count. If a non-neighbor Thullas a trick you
+  win, no right is earned.
+- The request can only be made when you are the one **leading** (the
+  current trick has zero cards played yet) — not mid-trick while following.
+  This is the one detail the table didn't fully specify; it was chosen
+  because it's the only point in a turn-based trick where "opting out of
+  playing a card" doesn't strand an in-progress trick.
+- Scope cut: the Monte Carlo strategy engine's simulated opponents
+  (`src/game/simulation/botPolicy.ts`) never use this move — they only ever
+  play cards. The move is fully real and legal for the human user (tracked
+  in state, offered in the UI, shows up in history), but isn't yet factored
+  into the numerical recommendation/EV comparison. Flagged here rather than
+  silently shipped as "the AI considered this and rejected it."
+
 ## Why this matters for strategy
 
 Because winning a **clean** trick is neutral-to-good (your hand shrinks by

@@ -21,6 +21,7 @@ function player(overrides: Partial<PlayerState> & { id: string }): PlayerState {
     escaped: false,
     escapedAtTrickIndex: null,
     voidSuits: [],
+    owedRequestsFrom: [],
     ...overrides,
   }
 }

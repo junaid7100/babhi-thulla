@@ -41,6 +41,11 @@ export function RulesPage() {
                 <Row label="Dealer rotates">{rules.dealerRotates ? 'Yes' : 'No'}</Row>
                 <Row label="Scoring">{rules.scoring.method}, Bhabhi tally: {rules.scoring.trackBhabhiTally ? 'on' : 'off'}</Row>
                 <Row label="Special cards">{rules.specialCards.length === 0 ? 'None' : rules.specialCards.map((c) => c.cardId).join(', ')}</Row>
+                <Row label="Neighbor Card Request">
+                  {rules.neighborCardRequest.enabled
+                    ? "On — a seat-neighbor's Thulla pickup earns you the right to demand their hand"
+                    : 'Off'}
+                </Row>
               </dl>
 
               {issues.length > 0 && (

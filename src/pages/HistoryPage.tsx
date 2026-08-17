@@ -46,6 +46,22 @@ export function HistoryPage() {
               </Card>
             )
           }
+          if (event.type === 'NEIGHBOR_REQUEST') {
+            return (
+              <Card key={event.id} className={invalid ? 'border-red-700' : ''}>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm">
+                    <span className="font-medium">{nameOf(event.requesterId)}</span> requested{' '}
+                    <span className="font-medium">{nameOf(event.targetId)}</span>'s entire hand
+                  </p>
+                  <button className="text-xs text-red-400 underline" onClick={() => removeCardEvent(event.id)}>
+                    Remove
+                  </button>
+                </div>
+                {invalid && <Pill tone="bad">Inconsistent with current state</Pill>}
+              </Card>
+            )
+          }
           const isEditing = editingId === event.id
           return (
             <Card key={event.id} className={invalid ? 'border-red-700' : ''}>

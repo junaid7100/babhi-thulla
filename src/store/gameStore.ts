@@ -1,5 +1,16 @@
 import { create } from 'zustand'
-import { attemptPlayCard, createNewGameEvent, editEvent, rebuild, removeEvent, undoLastEvent, type NewGameConfig, type PlayCardResult } from '../game/actions/gameEngine'
+import {
+  attemptNeighborRequest,
+  attemptPlayCard,
+  createNewGameEvent,
+  editEvent,
+  rebuild,
+  removeEvent,
+  undoLastEvent,
+  type NeighborRequestResult,
+  type NewGameConfig,
+  type PlayCardResult,
+} from '../game/actions/gameEngine'
 import { buildCardLedger, type CardLedger } from '../game/ledger/cardLedger'
 import { computeOpponentInference, type InferenceByPlayer } from '../game/inference/opponentInference'
 import { SIMULATION_PRESETS } from '../game/simulation/monteCarlo'
@@ -54,6 +65,7 @@ interface GameStore {
   setPendingNewGame: (p: PendingNewGame | null) => void
   startNewGame: (config: NewGameConfig) => Promise<void>
   playCard: (playerId: string, cardId: string) => PlayCardResult
+  neighborRequest: (requesterId: string, targetId: string) => NeighborRequestResult
   undo: () => void
   editCardEvent: (eventId: string, playerId: string, cardId: string) => void
   removeCardEvent: (eventId: string) => void
@@ -122,6 +134,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { state } = get()
     if (!state) return { ok: false, issues: [{ level: 'error', message: 'No active game.' }] }
     const result = attemptPlayCard(state, playerId, cardId)
+    if (result.ok) {
+      const nextEvents = [...get().events, result.event]
+      applyEvents(set, get, nextEvents, true)
+    }
+    return result
+  },
+
+  neighborRequest: (requesterId, targetId) => {
+    const { state } = get()
+    if (!state) return { ok: false, issues: [{ level: 'error', message: 'No active game.' }] }
+    const result = attemptNeighborRequest(state, requesterId, targetId)
     if (result.ok) {
       const nextEvents = [...get().events, result.event]
       applyEvents(set, get, nextEvents, true)

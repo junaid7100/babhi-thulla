@@ -19,6 +19,7 @@ export function BoardPage() {
   const recommendationLoading = useGameStore((s) => s.recommendationLoading)
   const recommendationSimulationsPlanned = useGameStore((s) => s.recommendationSimulationsPlanned)
   const playCard = useGameStore((s) => s.playCard)
+  const neighborRequest = useGameStore((s) => s.neighborRequest)
   const undo = useGameStore((s) => s.undo)
 
   const [showCounting, setShowCounting] = useState(false)
@@ -55,6 +56,18 @@ export function BoardPage() {
   const opponentDisabled = (cardId: string) =>
     !currentPlayer || !isSelectableForPlayer(ledger, currentPlayer.id, cardId)
 
+  const handleNeighborRequest = (targetId: string) => {
+    const result = neighborRequest(you.id, targetId)
+    if (!result.ok) setPlayError(result.issues.map((i) => i.message).join(' '))
+    else setPlayError(null)
+  }
+
+  const canRequestNow = isYourTurn && state.rules.neighborCardRequest.enabled && (state.currentTrick?.plays.length ?? 0) === 0
+  const owedCounts = new Map<string, number>()
+  if (canRequestNow) {
+    for (const id of you.owedRequestsFrom) owedCounts.set(id, (owedCounts.get(id) ?? 0) + 1)
+  }
+
   return (
     <Screen
       title={state.gameName}
@@ -86,6 +99,27 @@ export function BoardPage() {
           <div className="mb-4">
             <TrickDisplay state={state} />
           </div>
+
+          {owedCounts.size > 0 && (
+            <Card className="mb-4 border-amber-500/60">
+              <p className="mb-2 text-sm font-semibold text-amber-400 lg:text-base">Neighbor Card Request available</p>
+              <p className="mb-3 text-xs text-slate-400 lg:text-sm">
+                A seat-neighbor Thulla'd you into a pickup — you can demand their entire hand instead of leading normally. They'll
+                escape immediately and your turn ends.
+              </p>
+              <div className="flex flex-col gap-2">
+                {[...owedCounts.entries()].map(([targetId, count]) => {
+                  const target = state.players.find((p) => p.id === targetId)
+                  if (!target) return null
+                  return (
+                    <Button key={targetId} variant="secondary" onClick={() => handleNeighborRequest(targetId)}>
+                      Request all {target.cardsRemaining} of {target.name}'s cards{count > 1 ? ` (${count} rights owed)` : ''}
+                    </Button>
+                  )
+                })}
+              </div>
+            </Card>
+          )}
 
           {isYourTurn ? (
             <>

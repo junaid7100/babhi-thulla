@@ -40,6 +40,17 @@ export interface ScoringConfig {
   trackBhabhiTally: boolean
 }
 
+/**
+ * House rule, off by default: if your immediate seat-neighbor Thullas a
+ * trick you win (forcing you to pick it up), you earn a standing right to
+ * demand their entire hand the next time you lead a fresh trick. See
+ * RULES.md "House rule: Neighbor Card Request" for the full spec and the
+ * one implementation detail (lead-only) that wasn't fully specified.
+ */
+export interface NeighborCardRequestConfig {
+  enabled: boolean
+}
+
 export interface GameRules {
   id: string
   name: string
@@ -82,6 +93,9 @@ export interface GameRules {
 
   // Scoring
   scoring: ScoringConfig
+
+  // House rules
+  neighborCardRequest: NeighborCardRequestConfig
 
   // Extension point for house-rule special cards/actions. Empty by default —
   // never silently assumed.

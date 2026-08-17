@@ -88,3 +88,39 @@ export function checkPlayCard(state: GameState, playerId: string, cardId: string
 export function hasBlockingErrors(issues: ConsistencyIssue[]): boolean {
   return issues.some((i) => i.level === 'error')
 }
+
+/** Pre-flight checks for cashing in a Neighbor Card Request. See RULES.md. */
+export function checkNeighborRequest(state: GameState, requesterId: string, targetId: string): ConsistencyIssue[] {
+  const issues: ConsistencyIssue[] = []
+
+  if (!state.rules.neighborCardRequest.enabled) {
+    issues.push({ level: 'error', message: 'The Neighbor Card Request house rule is not enabled for this game.' })
+    return issues
+  }
+  if (state.status === 'COMPLETED') {
+    issues.push({ level: 'error', message: 'This game has already ended.' })
+    return issues
+  }
+  if (state.currentPlayerId !== requesterId) {
+    const expected = state.players.find((p) => p.id === state.currentPlayerId)
+    issues.push({ level: 'error', message: `It's ${expected?.name ?? 'someone else'}'s turn, not this player's.` })
+  }
+  if ((state.currentTrick?.plays.length ?? 0) !== 0) {
+    issues.push({ level: 'error', message: 'You can only make a Neighbor Card Request when leading a fresh trick.' })
+  }
+
+  const requester = state.players.find((p) => p.id === requesterId)
+  const target = state.players.find((p) => p.id === targetId)
+  if (!requester || !target) {
+    issues.push({ level: 'error', message: 'Unknown player.' })
+    return issues
+  }
+  if (target.escaped || target.cardsRemaining === 0) {
+    issues.push({ level: 'error', message: `${target.name} has no cards left to hand over.` })
+  }
+  if (!requester.owedRequestsFrom.includes(targetId)) {
+    issues.push({ level: 'error', message: `You have not earned a Neighbor Card Request against ${target.name}.` })
+  }
+
+  return issues
+}

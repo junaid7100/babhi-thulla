@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDefaultThullaRules } from '../rules/defaultRules'
 import type { GameEvent, PlayerSetup } from '../state/types'
-import { attemptPlayCard, createNewGameEvent, editEvent, rebuild, removeEvent, undoLastEvent } from './gameEngine'
+import { attemptNeighborRequest, attemptPlayCard, createNewGameEvent, editEvent, rebuild, removeEvent, undoLastEvent } from './gameEngine'
 
 const players: PlayerSetup[] = [
   { id: 'you', name: 'You', seat: 0, isUser: true },
@@ -78,6 +78,33 @@ describe('attemptPlayCard', () => {
       const next = rebuild([...events, result.event])
       expect(next.currentTrick?.plays.map((p) => p.card.id)).toEqual(['7S'])
     }
+  })
+})
+
+describe('attemptNeighborRequest', () => {
+  it('blocks when the house rule is disabled', () => {
+    const state = rebuild([newGame()])
+    const result = attemptNeighborRequest(state, 'you', 'ali')
+    expect(result.ok).toBe(false)
+  })
+
+  it('blocks when no right has been earned, even with the rule enabled', () => {
+    const enabledRules = { ...rules, neighborCardRequest: { enabled: true } }
+    const state = rebuild([{ ...(newGame() as Extract<GameEvent, { type: 'GAME_STARTED' }>), rules: enabledRules }])
+    const result = attemptNeighborRequest(state, 'you', 'ali')
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.issues.some((i) => i.message.includes('not earned'))).toBe(true)
+  })
+
+  it('allows a legal request once a right has been manufactured on the state', () => {
+    const enabledRules = { ...rules, neighborCardRequest: { enabled: true } }
+    const state = rebuild([{ ...(newGame() as Extract<GameEvent, { type: 'GAME_STARTED' }>), rules: enabledRules }])
+    const withRight = {
+      ...state,
+      players: state.players.map((p) => (p.id === 'you' ? { ...p, owedRequestsFrom: ['ali'] } : p)),
+    }
+    const result = attemptNeighborRequest(withRight, 'you', 'ali')
+    expect(result.ok).toBe(true)
   })
 })
 

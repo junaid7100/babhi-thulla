@@ -35,7 +35,26 @@ export function createDefaultThullaRules(): GameRules {
     dealerRotates: true,
     dealerHasSpecialRole: false,
     scoring: { method: 'RANK', trackBhabhiTally: true },
+    neighborCardRequest: { enabled: false },
     specialCards: [],
+  }
+}
+
+/**
+ * The classic ruleset plus the "Neighbor Card Request" house rule this table
+ * actually plays with — see RULES.md. This is the default template offered
+ * in New Game, since it matches how the game is really played here.
+ */
+export function createDefaultThullaRulesWithNeighborRequest(): GameRules {
+  const base = createDefaultThullaRules()
+  return {
+    ...base,
+    id: 'classic-thulla-neighbor-request',
+    name: 'Classic + Neighbor Request',
+    description:
+      base.description +
+      ' House rule: if your seat-neighbor Thullas a trick you win, you may later demand their whole hand when you next lead.',
+    neighborCardRequest: { enabled: true },
   }
 }
 
@@ -61,4 +80,8 @@ export function createTrumpSuitRules(): GameRules {
   }
 }
 
-export const RULE_TEMPLATES: GameRules[] = [createDefaultThullaRules(), createTrumpSuitRules()]
+export const RULE_TEMPLATES: GameRules[] = [
+  createDefaultThullaRulesWithNeighborRequest(),
+  createDefaultThullaRules(),
+  createTrumpSuitRules(),
+]

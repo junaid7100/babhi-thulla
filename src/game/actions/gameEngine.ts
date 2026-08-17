@@ -1,7 +1,7 @@
 import type { GameRules } from '../rules/types'
 import { buildState } from '../state/reducer'
 import type { GameEvent, GameState, PlayerSetup } from '../state/types'
-import { checkPlayCard, hasBlockingErrors, type ConsistencyIssue } from '../validation/consistency'
+import { checkNeighborRequest, checkPlayCard, hasBlockingErrors, type ConsistencyIssue } from '../validation/consistency'
 
 export interface NewGameConfig {
   gameName: string
@@ -42,6 +42,24 @@ export function attemptPlayCard(state: GameState, playerId: string, cardId: stri
     timestamp: Date.now(),
     playerId,
     cardId,
+  }
+  return { ok: true, event, warnings: issues }
+}
+
+export type NeighborRequestResult =
+  | { ok: true; event: GameEvent; warnings: ConsistencyIssue[] }
+  | { ok: false; issues: ConsistencyIssue[] }
+
+/** Validates cashing in a Neighbor Card Request and, if legal, produces the event to append. See RULES.md. */
+export function attemptNeighborRequest(state: GameState, requesterId: string, targetId: string): NeighborRequestResult {
+  const issues = checkNeighborRequest(state, requesterId, targetId)
+  if (hasBlockingErrors(issues)) return { ok: false, issues }
+  const event: GameEvent = {
+    id: crypto.randomUUID(),
+    type: 'NEIGHBOR_REQUEST',
+    timestamp: Date.now(),
+    requesterId,
+    targetId,
   }
   return { ok: true, event, warnings: issues }
 }
