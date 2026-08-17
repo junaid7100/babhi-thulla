@@ -12,7 +12,7 @@ interface HandStripProps {
 export function HandStrip({ cards, legalCardIds, onPlay, size = 'lg' }: HandStripProps) {
   const sorted = sortCards(cards)
   return (
-    <div className="no-scrollbar flex gap-1.5 overflow-x-auto px-1 py-2">
+    <div className="no-scrollbar flex gap-1.5 overflow-x-auto px-1 py-2 lg:flex-wrap lg:gap-4 lg:overflow-visible lg:py-4">
       {sorted.map((card) => {
         const legal = legalCardIds ? legalCardIds.has(card.id) : true
         return (
@@ -25,7 +25,7 @@ export function HandStrip({ cards, legalCardIds, onPlay, size = 'lg' }: HandStri
           />
         )
       })}
-      {sorted.length === 0 && <p className="px-2 py-4 text-sm text-slate-500">No cards.</p>}
+      {sorted.length === 0 && <p className="px-2 py-4 text-sm text-slate-500 lg:text-base">No cards.</p>}
     </div>
   )
 }

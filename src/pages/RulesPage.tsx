@@ -9,7 +9,8 @@ export function RulesPage() {
 
   return (
     <Screen title="Rule Validation" onBack={() => navigate('home')}>
-      <p className="mb-4 text-xs text-slate-500">
+      <div className="lg:mx-auto lg:max-w-3xl">
+      <p className="mb-4 text-xs text-slate-500 lg:text-sm">
         Baavi Tulla has no single universal rulebook — every rule the strategy engine relies on is listed explicitly here rather than
         assumed. See RULES.md in the project for the full write-up.
       </p>
@@ -54,6 +55,7 @@ export function RulesPage() {
             </Card>
           )
         })}
+      </div>
       </div>
     </Screen>
   )

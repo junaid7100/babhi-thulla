@@ -34,6 +34,7 @@ export function SummaryPage() {
 
   return (
     <Screen title="Game Summary" onBack={() => navigate('home')}>
+      <div className="lg:mx-auto lg:max-w-2xl">
       <Card className="mb-4 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">The Bhabhi is…</p>
         <p className="mt-1 text-2xl font-bold text-red-400">{state.players.find((p) => p.id === bhabhiId)?.name}</p>
@@ -70,6 +71,7 @@ export function SummaryPage() {
         <Button variant="danger" onClick={() => void deleteActiveGame()}>
           Delete This Game
         </Button>
+      </div>
       </div>
     </Screen>
   )

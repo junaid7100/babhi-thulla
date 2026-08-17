@@ -11,7 +11,7 @@ export function SettingsPage() {
 
   return (
     <Screen title="Settings" onBack={() => navigate('home')}>
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5 lg:mx-auto lg:max-w-2xl lg:gap-8">
         <section>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Theme</p>
           <div className="flex gap-2">

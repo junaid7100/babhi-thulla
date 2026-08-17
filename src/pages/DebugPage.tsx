@@ -25,7 +25,7 @@ export function DebugPage() {
 
   return (
     <Screen title="Debug" onBack={() => navigate('home')}>
-      <div className="flex flex-col gap-3 text-xs">
+      <div className="flex flex-col gap-3 text-xs lg:mx-auto lg:max-w-4xl">
         <Card>
           <p className="mb-1 font-semibold text-amber-400">Current State</p>
           <p>Status: {state.status} · Current player: {currentPlayer?.name} · Trick #{(state.currentTrick?.index ?? -1) + 1}</p>

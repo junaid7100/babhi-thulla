@@ -17,7 +17,8 @@ export function HomePage() {
 
   return (
     <Screen title="Baavi Tulla">
-      <p className="mb-6 text-sm text-slate-400">Your real-time AI strategy co-pilot for the Baavi Tulla card game.</p>
+      <div className="lg:mx-auto lg:max-w-2xl">
+      <p className="mb-6 text-sm text-slate-400 lg:text-base">Your real-time AI strategy co-pilot for the Baavi Tulla card game.</p>
 
       <div className="flex flex-col gap-3">
         <Button
@@ -94,6 +95,7 @@ export function HomePage() {
           </div>
         </section>
       )}
+      </div>
     </Screen>
   )
 }

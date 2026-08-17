@@ -12,7 +12,7 @@ interface FullDeckGridProps {
 /** All 52 cards, grouped by suit — used for initial hand entry and for recording an opponent's card. */
 export function FullDeckGrid({ selectedIds, disabledIds, onSelect, cardLabels }: FullDeckGridProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 lg:gap-6">
       {SUITS.map((suit) => (
         <SuitRow key={suit} suit={suit} selectedIds={selectedIds} disabledIds={disabledIds} onSelect={onSelect} cardLabels={cardLabels} />
       ))}
@@ -24,11 +24,11 @@ function SuitRow({ suit, selectedIds, disabledIds, onSelect, cardLabels }: FullD
   const isRed = suit === 'H' || suit === 'D'
   return (
     <div>
-      <div className={`mb-1 flex items-center gap-1 text-xs font-semibold ${isRed ? 'text-red-400' : 'text-slate-300'}`}>
-        <span className="text-base">{SUIT_SYMBOL[suit]}</span>
+      <div className={`mb-1 flex items-center gap-1 text-xs font-semibold lg:mb-2 lg:gap-2 lg:text-base ${isRed ? 'text-red-400' : 'text-slate-300'}`}>
+        <span className="text-base lg:text-2xl">{SUIT_SYMBOL[suit]}</span>
         <span>{SUIT_NAME[suit]}</span>
       </div>
-      <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-13">
+      <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-13 lg:gap-3">
         {RANKS.slice()
           .reverse()
           .map((rank) => {

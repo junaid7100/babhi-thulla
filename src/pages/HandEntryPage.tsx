@@ -38,21 +38,21 @@ export function HandEntryPage() {
 
   return (
     <Screen title="Your Hand" onBack={() => navigate('new-game')}>
-      <div className="mb-4">
-        <p className="mb-1 text-sm font-medium text-slate-300">Your Hand</p>
-        <div className="no-scrollbar flex min-h-[2.5rem] flex-wrap gap-1.5 rounded-xl border border-slate-800 bg-slate-900/60 p-2">
-          {selectedCards.length === 0 && <span className="px-1 text-sm text-slate-500">Tap cards below to add them</span>}
+      <div className="mb-4 lg:mb-6">
+        <p className="mb-1 text-sm font-medium text-slate-300 lg:text-base">Your Hand</p>
+        <div className="no-scrollbar flex min-h-[2.5rem] flex-wrap gap-1.5 rounded-xl border border-slate-800 bg-slate-900/60 p-2 lg:min-h-14 lg:gap-2 lg:rounded-2xl lg:p-3">
+          {selectedCards.length === 0 && <span className="px-1 text-sm text-slate-500 lg:text-base">Tap cards below to add them</span>}
           {selectedCards.map((c) => (
             <button
               key={c.id}
               onClick={() => toggle(c.id)}
-              className="rounded-md bg-slate-800 px-2 py-1 text-sm font-semibold text-slate-100 active:bg-slate-700"
+              className="rounded-md bg-slate-800 px-2 py-1 text-sm font-semibold text-slate-100 active:bg-slate-700 lg:rounded-lg lg:px-3 lg:py-1.5 lg:text-base lg:hover:bg-slate-700"
             >
               {cardLabel(c)} ✕
             </button>
           ))}
         </div>
-        <p className={`mt-1 text-xs ${countIsOff ? 'text-amber-400' : 'text-emerald-400'}`}>
+        <p className={`mt-1 text-xs lg:text-sm ${countIsOff ? 'text-amber-400' : 'text-emerald-400'}`}>
           {selected.size} card{selected.size === 1 ? '' : 's'} selected
           {countIsOff ? ` — an even ${numPlayers}-way deal expects about ${expected}. Adjust if your actual hand differs.` : ' — looks right.'}
         </p>
@@ -60,7 +60,7 @@ export function HandEntryPage() {
 
       <FullDeckGrid selectedIds={selected} onSelect={toggle} />
 
-      <Button className="mt-6 w-full" disabled={selected.size === 0} onClick={handleStart}>
+      <Button className="mt-6 w-full lg:mt-8 lg:max-w-md" disabled={selected.size === 0} onClick={handleStart}>
         Start Game ({selected.size} cards) →
       </Button>
     </Screen>

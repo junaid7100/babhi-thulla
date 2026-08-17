@@ -45,7 +45,7 @@ export function NewGamePage() {
 
   return (
     <Screen title="New Game" onBack={() => navigate('home')}>
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5 lg:mx-auto lg:max-w-2xl lg:gap-6">
         <Field label="Game name (optional)">
           <input
             className="input"

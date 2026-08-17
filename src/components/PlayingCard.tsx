@@ -12,9 +12,15 @@ interface PlayingCardProps {
 }
 
 const SIZE_CLASSES: Record<NonNullable<PlayingCardProps['size']>, string> = {
-  sm: 'w-10 h-14 text-[10px] rounded-md',
-  md: 'w-14 h-20 text-sm rounded-lg',
-  lg: 'w-16 h-24 text-base rounded-xl',
+  sm: 'w-11 h-16 text-[11px] rounded-md lg:w-16 lg:h-24 lg:text-sm lg:rounded-lg',
+  md: 'w-16 h-24 text-sm rounded-lg lg:w-24 lg:h-36 lg:text-lg lg:rounded-xl',
+  lg: 'w-20 h-28 text-base rounded-xl lg:w-32 lg:h-48 lg:text-2xl lg:rounded-2xl',
+}
+
+const SYMBOL_SIZE_CLASSES: Record<NonNullable<PlayingCardProps['size']>, string> = {
+  sm: 'text-xl lg:text-4xl',
+  md: 'text-2xl lg:text-5xl',
+  lg: 'text-3xl lg:text-6xl',
 }
 
 export function PlayingCard({ card, size = 'md', selected, disabled, dim, onClick, label }: PlayingCardProps) {
@@ -39,11 +45,11 @@ export function PlayingCard({ card, size = 'md', selected, disabled, dim, onClic
         interactive ? 'active:scale-95 cursor-pointer' : 'cursor-default',
       ].join(' ')}
     >
-      <span className="px-1 pt-0.5 text-left leading-none">{card.rank}</span>
-      <span className="absolute inset-0 flex items-center justify-center text-2xl leading-none">{symbol}</span>
-      <span className="self-end px-1 pb-0.5 leading-none">{card.rank}</span>
+      <span className="px-1 pt-0.5 text-left leading-none lg:px-2 lg:pt-1.5">{card.rank}</span>
+      <span className={`absolute inset-0 flex items-center justify-center leading-none ${SYMBOL_SIZE_CLASSES[size]}`}>{symbol}</span>
+      <span className="self-end px-1 pb-0.5 leading-none lg:px-2 lg:pb-1.5">{card.rank}</span>
       {label && (
-        <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1 text-[9px] font-normal text-slate-100">
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1 text-[9px] font-normal text-slate-100 lg:-top-3 lg:px-1.5 lg:py-0.5 lg:text-xs">
           {label}
         </span>
       )}

@@ -3,16 +3,20 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 export function Screen({ title, onBack, right, children }: { title: string; onBack?: () => void; right?: ReactNode; children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-col">
-      <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur lg:gap-3 lg:px-8 lg:py-5">
         {onBack && (
-          <button onClick={onBack} className="-ml-1 rounded-full p-2 text-slate-300 active:bg-slate-800" aria-label="Back">
+          <button
+            onClick={onBack}
+            className="-ml-1 rounded-full p-2 text-slate-300 active:bg-slate-800 lg:p-2.5 lg:text-lg lg:hover:bg-slate-800"
+            aria-label="Back"
+          >
             ←
           </button>
         )}
-        <h1 className="flex-1 truncate text-lg font-semibold">{title}</h1>
+        <h1 className="flex-1 truncate text-lg font-semibold lg:text-2xl">{title}</h1>
         {right}
       </header>
-      <div className="flex-1 px-4 pb-8 pt-4">{children}</div>
+      <div className="flex-1 px-4 pb-8 pt-4 lg:px-8 lg:pb-12 lg:pt-6">{children}</div>
     </div>
   )
 }
@@ -24,7 +28,8 @@ export function Button({
   className = '',
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
-  const base = 'rounded-xl px-4 py-3 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100'
+  const base =
+    'rounded-xl px-4 py-3 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 lg:rounded-2xl lg:px-6 lg:py-4 lg:text-base lg:cursor-pointer'
   const variants: Record<ButtonVariant, string> = {
     primary: 'bg-amber-400 text-slate-950 hover:bg-amber-300',
     secondary: 'bg-slate-800 text-slate-100 hover:bg-slate-700',
@@ -35,7 +40,7 @@ export function Button({
 }
 
 export function Card({ className = '', children }: { className?: string; children: ReactNode }) {
-  return <div className={`rounded-2xl border border-slate-800 bg-slate-900/60 p-4 ${className}`}>{children}</div>
+  return <div className={`rounded-2xl border border-slate-800 bg-slate-900/60 p-4 lg:rounded-3xl lg:p-6 ${className}`}>{children}</div>
 }
 
 export function Pill({ children, tone = 'default' }: { children: ReactNode; tone?: 'default' | 'good' | 'warn' | 'bad' }) {
@@ -45,5 +50,9 @@ export function Pill({ children, tone = 'default' }: { children: ReactNode; tone
     warn: 'bg-amber-900 text-amber-200',
     bad: 'bg-red-900 text-red-200',
   }
-  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${tones[tone]}`}>{children}</span>
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium lg:px-3.5 lg:py-1.5 lg:text-sm ${tones[tone]}`}>
+      {children}
+    </span>
+  )
 }

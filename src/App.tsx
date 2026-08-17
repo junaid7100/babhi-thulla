@@ -30,11 +30,11 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto flex h-dvh max-w-md flex-col bg-slate-950 text-slate-100">
+    <div className="mx-auto flex h-dvh max-w-md flex-col bg-slate-950 text-slate-100 lg:max-w-7xl">
       {lastError && (
-        <div className="flex items-center justify-between gap-2 bg-red-900/80 px-4 py-2 text-sm text-red-100">
+        <div className="flex items-center justify-between gap-2 bg-red-900/80 px-4 py-2 text-sm text-red-100 lg:px-8 lg:py-3 lg:text-base">
           <span>{lastError}</span>
-          <button className="shrink-0 rounded bg-red-800 px-2 py-1 text-xs" onClick={clearError}>
+          <button className="shrink-0 rounded bg-red-800 px-2 py-1 text-xs lg:px-3 lg:py-1.5 lg:text-sm" onClick={clearError}>
             Dismiss
           </button>
         </div>
