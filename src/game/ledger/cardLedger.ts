@@ -83,6 +83,24 @@ export function whoCouldHaveThisCard(ledger: CardLedger, cardId: string): string
   return []
 }
 
+/** Could `playerId` legally be the one holding (and now playing) this card, given everything currently known? */
+export function isSelectableForPlayer(ledger: CardLedger, playerId: string, cardId: string): boolean {
+  const entry = ledger.entries.get(cardId)
+  if (!entry) return false
+  switch (entry.status) {
+    case 'PLAYED':
+    case 'DISCARDED':
+    case 'IN_USER_HAND':
+      return false
+    case 'IN_OPPONENT_HAND_KNOWN':
+      return entry.ownerPlayerId === playerId
+    case 'POSSIBLY_IN_OPPONENT_HAND':
+      return entry.possibleOwnerPlayerIds.includes(playerId)
+    case 'UNKNOWN':
+      return true
+  }
+}
+
 export function isCardAvailable(ledger: CardLedger, cardId: string): boolean {
   return ledger.entries.get(cardId)?.status !== 'PLAYED'
 }

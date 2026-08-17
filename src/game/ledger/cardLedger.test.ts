@@ -3,7 +3,7 @@ import { createDeck } from '../cards/deck'
 import { computeOpponentInference } from '../inference/opponentInference'
 import { createDefaultThullaRules } from '../rules/defaultRules'
 import type { GameState, PlayerState } from '../state/types'
-import { buildCardLedger, cardsRemainingBySuit, hasCardBeenPlayed, isCardAvailable, whoCouldHaveThisCard } from './cardLedger'
+import { buildCardLedger, cardsRemainingBySuit, hasCardBeenPlayed, isCardAvailable, isSelectableForPlayer, whoCouldHaveThisCard } from './cardLedger'
 
 function makeState(players: PlayerState[], playedCardIds: string[] = []): GameState {
   return {
@@ -81,6 +81,24 @@ describe('buildCardLedger', () => {
     const ledger = buildCardLedger(state, inference)
     expect(ledger.entries.get('7D')!.status).toBe('IN_OPPONENT_HAND_KNOWN')
     expect(whoCouldHaveThisCard(ledger, '7D')).toEqual(['ali'])
+  })
+})
+
+describe('isSelectableForPlayer', () => {
+  it('rejects cards already played or in the user hand, and restricts known cards to their owner', () => {
+    const pickedUp = createDeck().filter((c) => c.id === '7D')
+    const you = player({ id: 'you', isUser: true, hand: createDeck().filter((c) => c.id === 'AS'), cardsRemaining: 1, cardsStarted: 1 })
+    const ali = player({ id: 'ali', seat: 1, cardsRemaining: 1, cardsStarted: 1, hand: pickedUp })
+    const sara = player({ id: 'sara', seat: 2, cardsRemaining: 3, cardsStarted: 3 })
+    const state = makeState([you, ali, sara], ['KS'])
+    const inference = computeOpponentInference(state)
+    const ledger = buildCardLedger(state, inference)
+
+    expect(isSelectableForPlayer(ledger, 'ali', 'KS')).toBe(false) // already played
+    expect(isSelectableForPlayer(ledger, 'ali', 'AS')).toBe(false) // in the user's hand
+    expect(isSelectableForPlayer(ledger, 'sara', '7D')).toBe(false) // known to be Ali's
+    expect(isSelectableForPlayer(ledger, 'ali', '7D')).toBe(true)
+    expect(isSelectableForPlayer(ledger, 'sara', '2C')).toBe(true) // unseen, possible for sara
   })
 })
 

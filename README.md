@@ -1,32 +1,49 @@
-# React + TypeScript + Vite
+# Baavi Tulla — AI Strategy Assistant
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A real-time, local-first strategy co-pilot for playing the card game **Baavi
+Tulla** (Bhabhi Thulla) with friends. You track what's played on your phone;
+the app maintains the full game state and tells you the strongest legal card
+to play, with a plain-English explanation and confidence rating.
 
-Currently, two official plugins are available:
+This is a companion tool, not a game to play against bots — the actual game
+happens at the table. See [`RULES.md`](./RULES.md) for the exact ruleset the
+engine implements and the assumptions it makes explicit rather than guesses.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Architecture
 
-## React Compiler
+The game engine (`src/game/`) is pure TypeScript with no React or browser
+dependency, and is fully unit-tested in isolation:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `cards/` — card/deck primitives
+- `rules/` — the configurable `GameRules` abstraction (see RULES.md)
+- `state/`, `actions/` — event-sourced `GameState`: undo and history edits
+  both work by replaying an edited event log, never by patching state
+- `validation/` — legal-move engine, trick evaluation, consistency checks
+- `ledger/` — the global card ledger (every card's status)
+- `inference/` — opponent hand inference (known/impossible/possible cards,
+  probability estimates)
+- `strategy/`, `simulation/` — the Monte Carlo recommendation engine
+- `explain/` — turns a recommendation's computed features into prose
 
-## Expanding the Oxlint configuration
+`src/store` (Zustand) is the single authoritative bridge between this engine
+and the UI; `src/persistence` is an IndexedDB layer so games survive a
+refresh; `src/workers` runs the simulation off the main thread.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Development
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev        # start the dev server
+npm test           # Vitest unit/integration tests (game engine)
+npm run build      # typecheck + production build
+npm run test:e2e   # Playwright golden-path test (builds+previews first)
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Use **Debug Mode** (Settings) to inspect raw state/ledger/inference/legal
+moves, and **Load Demo Game** on the home screen for a scripted example that
+exercises a clean trick, a Thulla pickup you win, and one an opponent wins.
+
+## Deployment
+
+Deployed to [Render](https://render.com) as a static site (this app is
+local-first / client-only — no backend is required).
