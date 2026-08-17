@@ -25,13 +25,16 @@ test('new game → hand entry → record a trick → recommendation → undo →
   await page.getByText(/Start Game/).click()
   await expect(page.getByText('Current Trick')).toBeVisible()
 
-  // Quick-entry: record the first trick (You lead A♠ eventually; someone else leads first here since dealer's left starts)
-  // Whoever leads, respond with the requested suit by tapping the first enabled card in that suit row.
-  await expect(page.getByText(/'s turn|Your turn/)).toBeVisible()
+  // The user's hand includes A♠, so they hold the opening card and lead the
+  // first trick. Play the engine's recommended card via the primary button.
+  await expect(page.getByText('Your turn', { exact: true })).toBeVisible()
+  await page.waitForSelector('button:has-text("Play ")', { timeout: 15000 })
+  await page.locator('button:has-text("Play ")').first().click()
 
-  // Record two opponent plays (grid-based quick entry), then it becomes the user's turn or a third opponent's.
-  const spadeCandidates = ['9♠', '7♠', '6♠', '5♠', '3♠', '2♠']
-  for (const label of spadeCandidates) {
+  // Now it's an opponent's turn — record their play via the quick-entry grid.
+  await expect(page.getByText(/'s turn/)).toBeVisible()
+  const candidates = ['9♠', '7♠', '6♠', '5♠', '3♠', '2♠', '9♥', '7♥', '9♦', '9♣']
+  for (const label of candidates) {
     const btn = page.locator(`button[aria-label="${label}"]`)
     if (await btn.isEnabled().catch(() => false)) {
       await btn.click()

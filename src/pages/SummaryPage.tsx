@@ -26,7 +26,6 @@ export function SummaryPage() {
         players: state.players.map((p) => ({ id: p.id, name: p.name, seat: p.seat, isUser: p.isUser })),
         userPlayerId: state.userPlayerId,
         dealerPlayerId: state.dealerPlayerId,
-        startingPlayerId: state.dealerPlayerId,
       },
     })
     navigate('hand-entry')

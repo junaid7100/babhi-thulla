@@ -20,15 +20,12 @@ export function NewGamePage() {
   const playerIssues = playersForRules(rules, numPlayers)
   const ruleIssues = validateRules(rules)
 
-  const startingSeat = (dealerSeat + 1) % numPlayers
-
   const handleContinue = () => {
     const players: PlayerSetup[] = [{ id: 'you', name: settings.defaultUserName || 'You', seat: 0, isUser: true }]
     for (let i = 1; i < numPlayers; i++) {
       players.push({ id: `p${i}`, name: names[i - 1] || `Player ${i + 1}`, seat: i, isUser: false })
     }
     const dealerPlayerId = players.find((p) => p.seat === dealerSeat)!.id
-    const startingPlayerId = players.find((p) => p.seat === startingSeat)!.id
 
     setPendingNewGame({
       config: {
@@ -37,7 +34,6 @@ export function NewGamePage() {
         players,
         userPlayerId: 'you',
         dealerPlayerId,
-        startingPlayerId,
       },
     })
     navigate('hand-entry')
@@ -99,7 +95,8 @@ export function NewGamePage() {
             ))}
           </select>
           <p className="mt-1 text-xs text-slate-500">
-            The player to the dealer's left starts the first trick — you can correct this later if needed.
+            The dealer has no special power in this ruleset — whoever holds the A♠ always leads the first trick.
+            You'll confirm who that is on the next screen.
           </p>
         </Field>
 

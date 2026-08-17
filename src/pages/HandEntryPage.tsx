@@ -10,6 +10,7 @@ export function HandEntryPage() {
   const pending = useGameStore((s) => s.pendingNewGame)
   const startNewGame = useGameStore((s) => s.startNewGame)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [openingHolderId, setOpeningHolderId] = useState<string | null>(null)
   const selectedCards = useMemo(() => sortCards([...selected].map(cardFromId)), [selected])
 
   useEffect(() => {
@@ -20,6 +21,19 @@ export function HandEntryPage() {
 
   const numPlayers = pending.config.players.length
   const expected = startingHandSize(0, numPlayers, pending.config.rules.deckSize)
+  const countIsOff = selected.size !== expected
+
+  // Nobody knows in advance who holds the opening card (e.g. A♠) — that's
+  // only revealed once hands are actually seen. Resolve it here rather than
+  // assuming a fixed "starting player" at New Game time.
+  const openingCard = pending.config.rules.openingLead.required ? (pending.config.rules.openingLead.card ?? null) : null
+  const userHoldsOpeningCard = openingCard ? selected.has(openingCard) : false
+  const otherPlayers = pending.config.players.filter((p) => !p.isUser)
+  const startingPlayerId = !openingCard
+    ? pending.config.dealerPlayerId
+    : userHoldsOpeningCard
+      ? pending.config.userPlayerId
+      : openingHolderId
 
   const toggle = (cardId: string) => {
     setSelected((prev) => {
@@ -31,10 +45,9 @@ export function HandEntryPage() {
   }
 
   const handleStart = () => {
-    void startNewGame({ ...pending.config, userHandCardIds: [...selected] })
+    if (!startingPlayerId) return
+    void startNewGame({ ...pending.config, startingPlayerId, userHandCardIds: [...selected] })
   }
-
-  const countIsOff = selected.size !== expected
 
   return (
     <Screen title="Your Hand" onBack={() => navigate('new-game')}>
@@ -60,7 +73,36 @@ export function HandEntryPage() {
 
       <FullDeckGrid selectedIds={selected} onSelect={toggle} />
 
-      <Button className="mt-6 w-full lg:mt-8 lg:max-w-md" disabled={selected.size === 0} onClick={handleStart}>
+      {openingCard && (
+        <div className="mt-6 rounded-2xl border border-amber-500/50 bg-amber-950/20 p-3 lg:rounded-3xl lg:p-5">
+          {userHoldsOpeningCard ? (
+            <p className="text-sm text-amber-300 lg:text-base">
+              You hold {cardLabel(cardFromId(openingCard))} — you lead the first trick.
+            </p>
+          ) : (
+            <>
+              <p className="mb-2 text-sm font-medium text-amber-300 lg:text-base">
+                You don't hold {cardLabel(cardFromId(openingCard))} — who does? They lead the first trick.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {otherPlayers.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setOpeningHolderId(p.id)}
+                    className={`rounded-xl px-3 py-2 text-sm font-medium lg:px-4 lg:py-2.5 lg:text-base ${
+                      openingHolderId === p.id ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-200 lg:hover:bg-slate-700'
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <Button className="mt-6 w-full lg:mt-8 lg:max-w-md" disabled={selected.size === 0 || !startingPlayerId} onClick={handleStart}>
         Start Game ({selected.size} cards) →
       </Button>
     </Screen>

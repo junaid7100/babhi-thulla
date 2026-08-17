@@ -7,6 +7,8 @@ import { HandStrip } from '@/components/HandStrip'
 import { FullDeckGrid } from '@/components/FullDeckGrid'
 import { CardCountingPanel } from '@/components/CardCountingPanel'
 import { OpponentDashboard } from '@/components/OpponentDashboard'
+import { PlayersStrip } from '@/components/PlayersStrip'
+import { EscapedCardsPanel } from '@/components/EscapedCardsPanel'
 import { getLegalMoves } from '@/game/validation/legalMoves'
 import { isSelectableForPlayer } from '@/game/ledger/cardLedger'
 
@@ -94,6 +96,8 @@ export function BoardPage() {
         </div>
       )}
 
+      <PlayersStrip state={state} />
+
       <div className="lg:grid lg:grid-cols-[1fr_400px] lg:items-start lg:gap-8">
         <div className="min-w-0">
           <div className="mb-4">
@@ -122,23 +126,24 @@ export function BoardPage() {
           )}
 
           {isYourTurn ? (
-            <>
-              <RecommendationPanel
-                state={state}
-                recommendation={recommendation}
-                loading={recommendationLoading}
-                simulationsPlanned={recommendationSimulationsPlanned}
-                onPlay={(cardId) => handlePlay(you.id, cardId)}
-              />
-              <p className="mb-1 text-xs font-medium text-slate-400 lg:text-sm">Or pick manually — dimmed cards aren't legal right now:</p>
-              <HandStrip cards={you.hand} legalCardIds={legalIds} onPlay={(cardId) => handlePlay(you.id, cardId)} />
-            </>
+            <RecommendationPanel
+              state={state}
+              recommendation={recommendation}
+              loading={recommendationLoading}
+              simulationsPlanned={recommendationSimulationsPlanned}
+              onPlay={(cardId) => handlePlay(you.id, cardId)}
+            />
           ) : (
             <Card className="mb-4">
               <p className="mb-2 text-sm font-medium text-slate-300 lg:text-base">What did {currentPlayer?.name} play?</p>
               <FullDeckGrid onSelect={(cardId) => currentPlayer && handlePlay(currentPlayer.id, cardId)} disabledIds={disabledSet(ledger, currentPlayer?.id, opponentDisabled)} />
             </Card>
           )}
+
+          <p className="mb-1 text-xs font-medium text-slate-400 lg:text-sm">
+            Your Hand {isYourTurn ? '— tap a card to play it (dimmed cards aren\'t legal right now)' : '(not your turn)'}
+          </p>
+          <HandStrip cards={you.hand} legalCardIds={legalIds} onPlay={isYourTurn ? (cardId) => handlePlay(you.id, cardId) : undefined} />
 
           <div className="mt-4 flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={undo} disabled={state.events.length <= 1}>
@@ -152,6 +157,8 @@ export function BoardPage() {
         </div>
 
         <div className="mt-4 flex flex-col gap-3 lg:mt-0 lg:gap-4">
+          <EscapedCardsPanel playedCardIds={state.playedCardIds} />
+
           {/* Mobile: collapsible toggles to save space. Desktop: always-visible sidebar. */}
           <div className="flex flex-col gap-2 lg:hidden">
             <button className="text-left text-xs font-medium text-slate-400 underline" onClick={() => setShowCounting((v) => !v)}>

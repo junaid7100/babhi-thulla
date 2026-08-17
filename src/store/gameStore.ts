@@ -40,7 +40,9 @@ export type ViewName =
   | 'settings'
 
 interface PendingNewGame {
-  config: Omit<NewGameConfig, 'userHandCardIds'>
+  // startingPlayerId isn't known at New Game time — nobody knows who holds
+  // the A♠ until hands are actually revealed. HandEntryPage resolves it.
+  config: Omit<NewGameConfig, 'userHandCardIds' | 'startingPlayerId'>
 }
 
 interface GameStore {
